@@ -10328,7 +10328,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
                                     mPerformClick = new PerformClick();
                                 }
                                 if (!post(mPerformClick)) {
-                                    performClick();
+                                    performClick();//这里执行点击回调
                                 }
                             }
                         }
@@ -10350,7 +10350,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
                     mIgnoreNextUpEvent = false;
                     break;
 
-                case MotionEvent.ACTION_DOWN:
+                case MotionEvent.ACTION_DOWN:// 按下操作事件
                     mHasPerformedLongPress = false;
 
                     if (performButtonActionOnTouchDown(event)) {
@@ -10358,11 +10358,11 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
                     }
 
                     // Walk up the hierarchy to determine if we're inside a scrolling container.
-                    boolean isInScrollingContainer = isInScrollingContainer();
+                    boolean isInScrollingContainer = isInScrollingContainer();//判断是否在滑动控件里面
 
                     // For views inside a scrolling container, delay the pressed feedback for
                     // a short period in case this is a scroll.
-                    if (isInScrollingContainer) {
+                    if (isInScrollingContainer) {//如果当前View是一个滑动的View，延迟按下反馈一小段时间
                         mPrivateFlags |= PFLAG_PREPRESSED;
                         if (mPendingCheckForTap == null) {
                             mPendingCheckForTap = new CheckForTap();
@@ -10377,7 +10377,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
                     }
                     break;
 
-                case MotionEvent.ACTION_CANCEL:
+                case MotionEvent.ACTION_CANCEL:// 取消操作事件
                     setPressed(false);
                     removeTapCallback();
                     removeLongPressCallback();
@@ -10386,7 +10386,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
                     mIgnoreNextUpEvent = false;
                     break;
 
-                case MotionEvent.ACTION_MOVE:
+                case MotionEvent.ACTION_MOVE:// 移动操作事件
                     drawableHotspotChanged(x, y);
 
                     // Be lenient about moving outside of buttons
