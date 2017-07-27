@@ -1,4 +1,4 @@
-/*
+/*	dispatchTouchEvent：2077
  * Copyright (C) 2006 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -2085,28 +2085,28 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
             ev.setTargetAccessibilityFocus(false);
         }
 
-        boolean handled = false;
+        boolean handled = false;//是否处理
         if (onFilterTouchEventForSecurity(ev)) {
             final int action = ev.getAction();
             final int actionMasked = action & MotionEvent.ACTION_MASK;
 
-            // Handle an initial down.
+            // Handle an initial down.处理一个初始的按下事件
             if (actionMasked == MotionEvent.ACTION_DOWN) {
-                // Throw away all previous state when starting a new touch gesture.
-                // The framework may have dropped the up or cancel event for the previous gesture
+                // Throw away all previous state when starting a new touch gesture.//当开始一个新的手势时，会丢弃之前的所有状态
+                // The framework may have dropped the up or cancel event for the previous gesture//该框架可能会取消之前手势的抬起和取消事件
                 // due to an app switch, ANR, or some other state change.
-                cancelAndClearTouchTargets(ev);
-                resetTouchState();
+                cancelAndClearTouchTargets(ev);//取消并且清空touchtargets
+                resetTouchState();//重置touchstate
             }
 
-            // Check for interception.
+            // Check for interception.检查是否拦截
             final boolean intercepted;
             if (actionMasked == MotionEvent.ACTION_DOWN
                     || mFirstTouchTarget != null) {
-                final boolean disallowIntercept = (mGroupFlags & FLAG_DISALLOW_INTERCEPT) != 0;
+                final boolean disallowIntercept = (mGroupFlags & FLAG_DISALLOW_INTERCEPT) != 0;//如果是down事件，disallowIntercept=false
                 if (!disallowIntercept) {
-                    intercepted = onInterceptTouchEvent(ev);
-                    ev.setAction(action); // restore action in case it was changed
+                    intercepted = onInterceptTouchEvent(ev);//调用拦截方法，判断是否要拦截
+                    ev.setAction(action); // restore action in case it was changed//重设action以防action改变
                 } else {
                     intercepted = false;
                 }
@@ -2127,10 +2127,10 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
                     || actionMasked == MotionEvent.ACTION_CANCEL;
 
             // Update list of touch targets for pointer down, if needed.
-            final boolean split = (mGroupFlags & FLAG_SPLIT_MOTION_EVENTS) != 0;
+            final boolean split = (mGroupFlags & FLAG_SPLIT_MOTION_EVENTS) != 0;//是否有多个手指触摸
             TouchTarget newTouchTarget = null;
             boolean alreadyDispatchedToNewTouchTarget = false;
-            if (!canceled && !intercepted) {
+            if (!canceled && !intercepted) { //canceled和intercepted 同时为false 才可能去分发给子控件
 
                 // If the event is targeting accessiiblity focus we give it to the
                 // view that has accessibility focus and if it does not handle it
@@ -2140,9 +2140,9 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
                 View childWithAccessibilityFocus = ev.isTargetAccessibilityFocus()
                         ? findChildWithAccessibilityFocus() : null;
 
-                if (actionMasked == MotionEvent.ACTION_DOWN
-                        || (split && actionMasked == MotionEvent.ACTION_POINTER_DOWN)
-                        || actionMasked == MotionEvent.ACTION_HOVER_MOVE) {
+                if (actionMasked == MotionEvent.ACTION_DOWN //按下事件
+                        || (split && actionMasked == MotionEvent.ACTION_POINTER_DOWN) //多指按下
+                        || actionMasked == MotionEvent.ACTION_HOVER_MOVE) { //鼠标光标在view上悬停移动
                     final int actionIndex = ev.getActionIndex(); // always 0 for down
                     final int idBitsToAssign = split ? 1 << ev.getPointerId(actionIndex)
                             : TouchTarget.ALL_POINTER_IDS;
@@ -2157,15 +2157,15 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
                         final float y = ev.getY(actionIndex);
                         // Find a child that can receive the event.
                         // Scan children from front to back.
-                        final ArrayList<View> preorderedList = buildOrderedChildList();
+                        final ArrayList<View> preorderedList = buildOrderedChildList();//返回一个按Z属性大小排序的集合，从小到大。
                         final boolean customOrder = preorderedList == null
                                 && isChildrenDrawingOrderEnabled();
                         final View[] children = mChildren;
                         for (int i = childrenCount - 1; i >= 0; i--) {
                             final int childIndex = customOrder
-                                    ? getChildDrawingOrder(childrenCount, i) : i;
+                                    ? getChildDrawingOrder(childrenCount, i) : i;//不考虑customOrder， childIndex = i
                             final View child = (preorderedList == null)
-                                    ? children[childIndex] : preorderedList.get(childIndex);
+                                    ? children[childIndex] : preorderedList.get(childIndex);//preorderedList!=null获取preorderedList集合最后一个view, 否则从children获取最后一个
 
                             // If there is a view that has accessibility focus we want it
                             // to get the event first and if not handled we will perform a
@@ -2179,12 +2179,12 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
                                 i = childrenCount - 1;
                             }
 
-                            if (!canViewReceivePointerEvents(child)
-                                    || !isTransformedTouchPointInView(x, y, child, null)) {
+                            if (!canViewReceivePointerEvents(child) //view不可见或者没有动画
+                                    || !isTransformedTouchPointInView(x, y, child, null)) { //没有点击到View上面
                                 ev.setTargetAccessibilityFocus(false);
                                 continue;
                             }
-
+							
                             newTouchTarget = getTouchTarget(child);
                             if (newTouchTarget != null) {
                                 // Child is already receiving touch within its bounds.
@@ -2194,6 +2194,7 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
                             }
 
                             resetCancelNextUpFlag(child);
+							//view可见或有动画 并且 点击到view上面的区域 就会分发事件给view
                             if (dispatchTransformedTouchEvent(ev, false, child, idBitsToAssign)) {
                                 // Child wants to receive touch within its bounds.
                                 mLastTouchDownTime = ev.getDownTime();
@@ -2323,7 +2324,7 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
     private void resetTouchState() {
         clearTouchTargets();
         resetCancelNextUpFlag(this);
-        mGroupFlags &= ~FLAG_DISALLOW_INTERCEPT;
+        mGroupFlags &= ~FLAG_DISALLOW_INTERCEPT;//设置groupflags的二进制高20位为0， FLAG_DISALLOW_INTERCEPT是‭1000 0000 0000 0000 0000‬
         mNestedScrollAxes = SCROLL_AXIS_NONE;
     }
 
@@ -3522,21 +3523,22 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
             mPreSortedChildren.ensureCapacity(count);
         }
 
-        final boolean useCustomOrder = isChildrenDrawingOrderEnabled();
+        final boolean useCustomOrder = isChildrenDrawingOrderEnabled();//自定义排序？
         for (int i = 0; i < mChildrenCount; i++) {
             // add next child (in child order) to end of list
-            int childIndex = useCustomOrder ? getChildDrawingOrder(mChildrenCount, i) : i;
+            int childIndex = useCustomOrder ? getChildDrawingOrder(mChildrenCount, i) : i;//暂时不考虑自定义排序
             View nextChild = mChildren[childIndex];
             float currentZ = nextChild.getZ();
 
-            // insert ahead of any Views with greater Z
+            // insert ahead of any Views with greater Z //把当前view插入到所有大于他Z属性view之前
             int insertIndex = i;
             while (insertIndex > 0 && mPreSortedChildren.get(insertIndex - 1).getZ() > currentZ) {
+				//在mPreSortedChildren集合中循环找到最前面一个大于当前view的z属性的view的下标
                 insertIndex--;
             }
-            mPreSortedChildren.add(insertIndex, nextChild);
+            mPreSortedChildren.add(insertIndex, nextChild);//插入到最前一个大ZView之前
         }
-        return mPreSortedChildren;
+        return mPreSortedChildren;//集合的顺序是 Z属性大小决定， 小的在前面，大的在后面。（Z越大，就表示能覆盖越多view,表示在画面最上面)
     }
 
     private void notifyAnimationListener() {
