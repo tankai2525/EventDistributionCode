@@ -1,4 +1,4 @@
-/*	dispatchTouchEvent：2077
+/*	dispatchTouchEvent：2077  dispatchTransformedTouchEvent
  * Copyright (C) 2006 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -2106,6 +2106,7 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
                 final boolean disallowIntercept = (mGroupFlags & FLAG_DISALLOW_INTERCEPT) != 0;//如果是down事件，disallowIntercept=false
                 if (!disallowIntercept) {
                     intercepted = onInterceptTouchEvent(ev);//调用拦截方法，判断是否要拦截
+					//如果 onInterceptTouchEvent(ev)返回true 拦截down事件，就会导致后续move和up事件时 mFirstHoverTarget=null, onInterceptTouchEvent不会再执行
                     ev.setAction(action); // restore action in case it was changed//重设action以防action改变
                 } else {
                     intercepted = false;
@@ -2143,6 +2144,7 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
                 if (actionMasked == MotionEvent.ACTION_DOWN //按下事件
                         || (split && actionMasked == MotionEvent.ACTION_POINTER_DOWN) //多指按下
                         || actionMasked == MotionEvent.ACTION_HOVER_MOVE) { //鼠标光标在view上悬停移动
+						//这个if里只会处理按下、多指触摸、鼠标光标悬停事件,  注意move 和 up 事件不在这里处理
                     final int actionIndex = ev.getActionIndex(); // always 0 for down
                     final int idBitsToAssign = split ? 1 << ev.getPointerId(actionIndex)
                             : TouchTarget.ALL_POINTER_IDS;
@@ -2196,10 +2198,10 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
                             resetCancelNextUpFlag(child);
 							//view可见或有动画 并且 点击到view上面的区域 就会分发事件给view
                             if (dispatchTransformedTouchEvent(ev, false, child, idBitsToAssign)) {
-                                // Child wants to receive touch within its bounds.
+                                // Child wants to receive touch within its bounds.//子控件处理了事件
                                 mLastTouchDownTime = ev.getDownTime();
                                 if (preorderedList != null) {
-                                    // childIndex points into presorted list, find original index
+                                    // childIndex points into presorted list, find original index//从原始集合mChildren中找到view原始下标
                                     for (int j = 0; j < childrenCount; j++) {
                                         if (children[childIndex] == mChildren[j]) {
                                             mLastTouchDownIndex = j;
@@ -2237,23 +2239,29 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
 
             // Dispatch to touch targets.
             if (mFirstTouchTarget == null) {
-                // No touch targets so treat this as an ordinary view.
-                handled = dispatchTransformedTouchEvent(ev, canceled, null,
+                // No touch targets so treat this as an ordinary view.//点到了父控件，但可能没有点到子控件或子控件没有处理事件，导致mFirsTouchTarget为空
+				//所以就把 父控件viewgroup当做view来处理
+                handled = dispatchTransformedTouchEvent(ev, canceled, null, 
                         TouchTarget.ALL_POINTER_IDS);
+						//很重要的一个方法，注意这个方法里child参数是null, 所以这个方法内部是调用的父控件的super.dispatchTouchEvent，接着就会调用onTouch onTouchEvent
             } else {
                 // Dispatch to touch targets, excluding the new touch target if we already
                 // dispatched to it.  Cancel touch targets if necessary.
+				// 一个事件序列，第一个down事件被子控件处理完，mFirstTouchTarget不为空，会来到这里， 
                 TouchTarget predecessor = null;
                 TouchTarget target = mFirstTouchTarget;
                 while (target != null) {
-                    final TouchTarget next = target.next;
+                    final TouchTarget next = target.next; //down事件处理完 target.next = null
                     if (alreadyDispatchedToNewTouchTarget && target == newTouchTarget) {
+						//down事件处理完alreadyDispatchedToNewTouchTarget=true,  newTouchTarget 和 mFirstHoverTarget 是相等的
                         handled = true;
                     } else {
-                        final boolean cancelChild = resetCancelNextUpFlag(target.child)
+						//后续move和up事件 alreadyDispatchedToNewTouchTarget = false 会在这里分发事件
+                        final boolean cancelChild = resetCancelNextUpFlag(target.child) 
                                 || intercepted;
                         if (dispatchTransformedTouchEvent(ev, cancelChild,
-                                target.child, target.pointerIdBits)) {
+                                target.child, target.pointerIdBits)) { 
+							//down事件处理完 target.child 是指向一次按下并处理事件的view, 所以后续move和up事件也是他来处理，直到一个事件序列完成
                             handled = true;
                         }
                         if (cancelChild) {
@@ -2504,18 +2512,18 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
         }
     }
 
-    /**
-     * Transforms a motion event into the coordinate space of a particular child view,
+    /** 重要的一个方法，他的作用是把事件分发给子控件处理还是分发给自己来处理，返回处理结果
+     * Transforms a motion event into the coordinate space of a particular child view, //
      * filters out irrelevant pointer ids, and overrides its action if necessary.
      * If child is null, assumes the MotionEvent will be sent to this ViewGroup instead.
      */
     private boolean dispatchTransformedTouchEvent(MotionEvent event, boolean cancel,
             View child, int desiredPointerIdBits) {
         final boolean handled;
-
+		//取消动作事件是一种特殊事件，暂时不用管
         // Canceling motions is a special case.  We don't need to perform any transformations
         // or filtering.  The important part is the action, not the contents.
-        final int oldAction = event.getAction();
+        final int oldAction = event.getAction();//如果父控件只拦截move事件会导致他等于cancel事件
         if (cancel || oldAction == MotionEvent.ACTION_CANCEL) {
             event.setAction(MotionEvent.ACTION_CANCEL);
             if (child == null) {
@@ -2527,7 +2535,7 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
             return handled;
         }
 
-        // Calculate the number of pointers to deliver.
+        // Calculate the number of pointers to deliver.//感觉是计算手指
         final int oldPointerIdBits = event.getPointerIdBits();
         final int newPointerIdBits = oldPointerIdBits & desiredPointerIdBits;
 
@@ -2541,7 +2549,7 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
         // irreversible transformations, then we can reuse the motion event for this
         // dispatch as long as we are careful to revert any changes we make.
         // Otherwise we need to make a copy.
-        final MotionEvent transformedEvent;
+        final MotionEvent transformedEvent;//注意这个transformedEvent , 分发的这个对象。我们没有直接传送父控件的event,  而是通过event去构造了一个新的event来分发；
         if (newPointerIdBits == oldPointerIdBits) {
             if (child == null || child.hasIdentityMatrix()) {
                 if (child == null) {
@@ -2557,14 +2565,14 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
                 }
                 return handled;
             }
-            transformedEvent = MotionEvent.obtain(event);
+            transformedEvent = MotionEvent.obtain(event); 
         } else {
             transformedEvent = event.split(newPointerIdBits);
         }
 
-        // Perform any necessary transformations and dispatch.
+        // Perform any necessary transformations and dispatch.//执行必要的转变和分发， 
         if (child == null) {
-            handled = super.dispatchTouchEvent(transformedEvent);
+            handled = super.dispatchTouchEvent(transformedEvent); //如果child=null,转变分发给自己
         } else {
             final float offsetX = mScrollX - child.mLeft;
             final float offsetY = mScrollY - child.mTop;
@@ -2573,7 +2581,7 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
                 transformedEvent.transform(child.getInverseMatrix());
             }
 
-            handled = child.dispatchTouchEvent(transformedEvent);
+            handled = child.dispatchTouchEvent(transformedEvent); //如果child!=null,分发给child
         }
 
         // Done.
