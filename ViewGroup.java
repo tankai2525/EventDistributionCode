@@ -2103,13 +2103,19 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
             final boolean intercepted;
             if (actionMasked == MotionEvent.ACTION_DOWN
                     || mFirstTouchTarget != null) {
-                final boolean disallowIntercept = (mGroupFlags & FLAG_DISALLOW_INTERCEPT) != 0;//如果是down事件，disallowIntercept=false
+				//mGroupFlags是包含了很多标记位的整形数
+				//FLAG_DISALLOW_INTERCEPT : 不允许拦截标记，值是0x80000, 二进制是高16位是1，其余位是0
+				/*
+				如果是down事件，resetTouchState()让view的mGroupFlags高16位为0，
+				mGroupFlags & FLAG_DISALLOW_INTERCEPT表示两个高16位位与操作结果是0，0!=0?那么disallowIntercept一定是false
+				*/
+                final boolean disallowIntercept = (mGroupFlags & FLAG_DISALLOW_INTERCEPT) != 0;
                 if (!disallowIntercept) {
                     intercepted = onInterceptTouchEvent(ev);//调用拦截方法，判断是否要拦截
 					//如果 onInterceptTouchEvent(ev)返回true 拦截down事件，就会导致后续move和up事件时 mFirstHoverTarget=null, onInterceptTouchEvent不会再执行
                     ev.setAction(action); // restore action in case it was changed//重设action以防action改变
                 } else {
-                    intercepted = false;
+                    intercepted = false;//disallowIntercept=true ，当前控件肯定不拦截事件。
                 }
             } else {
                 // There are no touch targets and this action is not an initial down
@@ -5896,16 +5902,17 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
      * account both the MeasureSpec requirements for this view and its padding.
      * We skip children that are in the GONE state The heavy lifting is done in
      * getChildMeasureSpec.
+	 * 要求所有子视图测量他们自己，跳过GONE状态VIEW
      *
-     * @param widthMeasureSpec The width requirements for this view
-     * @param heightMeasureSpec The height requirements for this view
+     * @param widthMeasureSpec The width requirements for this view// 该视图的宽度需求
+     * @param heightMeasureSpec The height requirements for this view// 该视图的高度需求
      */
     protected void measureChildren(int widthMeasureSpec, int heightMeasureSpec) {
         final int size = mChildrenCount;
         final View[] children = mChildren;
-        for (int i = 0; i < size; ++i) {
+        for (int i = 0; i < size; ++i) {//遍历子元素
             final View child = children[i];
-            if ((child.mViewFlags & VISIBILITY_MASK) != GONE) {
+            if ((child.mViewFlags & VISIBILITY_MASK) != GONE) {//如果子元素visibility不是GONE，就调用measureChild
                 measureChild(child, widthMeasureSpec, heightMeasureSpec);
             }
         }
@@ -5915,21 +5922,23 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
      * Ask one of the children of this view to measure itself, taking into
      * account both the MeasureSpec requirements for this view and its padding.
      * The heavy lifting is done in getChildMeasureSpec.
-     *
+     * 测量单个子视图
      * @param child The child to measure
      * @param parentWidthMeasureSpec The width requirements for this view
      * @param parentHeightMeasureSpec The height requirements for this view
      */
     protected void measureChild(View child, int parentWidthMeasureSpec,
             int parentHeightMeasureSpec) {
-        final LayoutParams lp = child.getLayoutParams();
+        final LayoutParams lp = child.getLayoutParams();//获取子元素的布局参数对象
 
         final int childWidthMeasureSpec = getChildMeasureSpec(parentWidthMeasureSpec,
                 mPaddingLeft + mPaddingRight, lp.width);
+				//根据当前viewgroup的测量宽度、当前viewgroup的paddingLeft+paddingRight、子元素的宽获 取子元素的宽度measuerSpec
         final int childHeightMeasureSpec = getChildMeasureSpec(parentHeightMeasureSpec,
                 mPaddingTop + mPaddingBottom, lp.height);
+				//根据当前viewgroup的测量高度，当前viewgroup的paddingTop+paddingBottom, 子元素的高度 取子元素的高度measuerSpec
 
-        child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
+        child.measure(childWidthMeasureSpec, childHeightMeasureSpec);//调用子view的measure
     }
 
     /**
@@ -5973,7 +5982,7 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
      * to be the same size as the parent, the parent should ask the child to
      * layout given an exact size.
      *
-     * @param spec The requirements for this view
+     * @param spec The requirements for this view //该veiw的宽度要求
      * @param padding The padding of this view for the current dimension and
      *        margins, if applicable
      * @param childDimension How big the child wants to be in the current
@@ -5981,34 +5990,37 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
      * @return a MeasureSpec integer for the child
      */
     public static int getChildMeasureSpec(int spec, int padding, int childDimension) {
-        int specMode = MeasureSpec.getMode(spec);
-        int specSize = MeasureSpec.getSize(spec);
+        int specMode = MeasureSpec.getMode(spec);//获取父视图的测量模式
+        int specSize = MeasureSpec.getSize(spec);//获取父视图的测量大小
 
-        int size = Math.max(0, specSize - padding);
-
-        int resultSize = 0;
-        int resultMode = 0;
-
+        int size = Math.max(0, specSize - padding);//子视图最大尺寸（子视图不一定用）
+		
+        int resultSize = 0;//子元素的测量大小
+        int resultMode = 0;//子元素的测量模式
+		//根据父容器的MeasureSpec的模式再结合子元素的LayoutParams属性来得出子元素的MeasureSpec
         switch (specMode) {
-        // Parent has imposed an exact size on us
-        case MeasureSpec.EXACTLY:
-            if (childDimension >= 0) {
+        // Parent has imposed an exact size on us //父控件强加给子控件的一个具体大小
+        case MeasureSpec.EXACTLY://精确的模式
+            if (childDimension >= 0) {//childDiemsion就是child的宽高大小
+				//如果是具体数值，那么resultsize=具体数值，模式是EXACTILY（01+30位0）
                 resultSize = childDimension;
                 resultMode = MeasureSpec.EXACTLY;
             } else if (childDimension == LayoutParams.MATCH_PARENT) {
                 // Child wants to be our size. So be it.
+				//如果是MATCH_PARENT时，子视图的尺寸是父视图尺寸减去父padding的大小
                 resultSize = size;
                 resultMode = MeasureSpec.EXACTLY;
             } else if (childDimension == LayoutParams.WRAP_CONTENT) {
                 // Child wants to determine its own size. It can't be
                 // bigger than us.
+				//子视图自己确定自己大小，但不能超过父视图尺寸减去父padding的大小
                 resultSize = size;
-                resultMode = MeasureSpec.AT_MOST;
+                resultMode = MeasureSpec.AT_MOST; 
             }
             break;
 
-        // Parent has imposed a maximum size on us
-        case MeasureSpec.AT_MOST:
+        // Parent has imposed a maximum size on us ////父控件强加给子控件的一个最大值
+        case MeasureSpec.AT_MOST: //最多，至多
             if (childDimension >= 0) {
                 // Child wants a specific size... so be it
                 resultSize = childDimension;
@@ -6026,8 +6038,8 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
             }
             break;
 
-        // Parent asked to see how big we want to be
-        case MeasureSpec.UNSPECIFIED:
+        // Parent asked to see how big we want to be //想要多大就多大
+        case MeasureSpec.UNSPECIFIED: //未指明
             if (childDimension >= 0) {
                 // Child wants a specific size... let him have it
                 resultSize = childDimension;

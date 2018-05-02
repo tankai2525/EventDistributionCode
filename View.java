@@ -16602,7 +16602,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     /**
      * Assign a size and position to a view and all of its
      * descendants
-     *
+     * 给视图和它所有子类分配大小和位置
      * <p>This is the second phase of the layout mechanism.
      * (The first is measuring). In this phase, each parent calls
      * layout on all of its children to position them.
@@ -16656,10 +16656,11 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     /**
      * Called from layout when this view should
      * assign a size and position to each of its children.
-     *
+     * 当父视图为每个子视图分配大小和位置时，会在layout()方法中调用此方法
      * Derived classes with children should override
      * this method and call layout on each of
      * their children.
+	 * 派生类应该重写此方法并且在方法内调用每个子视图的layout()方法
      * @param changed This is a new size or position for this view
      * @param left Left position, relative to parent
      * @param top Top position, relative to parent
@@ -18827,6 +18828,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
      * measured height. This method is invoked by {@link #measure(int, int)} and
      * should be overridden by subclasses to provide accurate and efficient
      * measurement of their contents.
+	 * 测量view和view内容以确定测量宽高，这个方法被measure调用并且子类应该重现此方法以提供精准有效的度量
      * </p>
      *
      * <p>
@@ -18835,21 +18837,22 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
      * measured width and height of this view. Failure to do so will trigger an
      * <code>IllegalStateException</code>, thrown by
      * {@link #measure(int, int)}. Calling the superclass'
-     * {@link #onMeasure(int, int)} is a valid use.
+     * {@link #onMeasure(int, int)} is a valid use. 调用父类的onMeasure不会抛异常
      * </p>
-     *
+     * 当重写这个方法时，你必须调用setMeasureDimension()方法存储view测量的宽高.否则会在measure()方法中抛出IllegalstateException异常
      * <p>
      * The base class implementation of measure defaults to the background size,
      * unless a larger size is allowed by the MeasureSpec. Subclasses should
      * override {@link #onMeasure(int, int)} to provide better measurements of
      * their content.
+	 * 父类实现了测量默认大小，子类应该重写并提供更好的测量方式
      * </p>
      *
      * <p>
      * If this method is overridden, it is the subclass's responsibility to make
      * sure the measured height and width are at least the view's minimum height
      * and width ({@link #getSuggestedMinimumHeight()} and
-     * {@link #getSuggestedMinimumWidth()}).
+     * {@link #getSuggestedMinimumWidth()}). 如果重写了，确保测量宽高至少是view的最小宽高
      * </p>
      *
      * @param widthMeasureSpec horizontal space requirements as imposed by the parent.
@@ -20964,34 +20967,42 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
 
     /**
      * A MeasureSpec encapsulates the layout requirements passed from parent to child.
+	 * MeasureSpec 封装了父布局传给子布局的布局要求
      * Each MeasureSpec represents a requirement for either the width or the height.
+	 * 每一个MeasureSpec代表了一组对宽度和高度的要求
      * A MeasureSpec is comprised of a size and a mode. There are three possible
+	 * MeasureSpec 由size和mode构成. 有三种Mode
      * modes:
      * <dl>
-     * <dt>UNSPECIFIED</dt>
+     * <dt>UNSPECIFIED</dt> 未加规定的
      * <dd>
      * The parent has not imposed any constraint on the child. It can be whatever size
-     * it wants.
+     * it wants. 父布局没有对子布局施加任何约束，子布局可以是任何大小
      * </dd>
      *
-     * <dt>EXACTLY</dt>
+     * <dt>EXACTLY</dt> 精确地
      * <dd>
      * The parent has determined an exact size for the child. The child is going to be
      * given those bounds regardless of how big it wants to be.
+	 * 父布局已给子布局确定了一个精确的大小。不管子布局想要多大，子布局将在给定限定边界里。
      * </dd>
      *
-     * <dt>AT_MOST</dt>
+     * <dt>AT_MOST</dt> 最多 至多
      * <dd>
      * The child can be as large as it wants up to the specified size.
+	 * 子布局最大可以达到的指定大小
      * </dd>
      * </dl>
      *
      * MeasureSpecs are implemented as ints to reduce object allocation. This class
      * is provided to pack and unpack the &lt;size, mode&gt; tuple into the int.
+	 * MeasureSpecs 使用了二进制减少对象分配。这个类提供打包解包<siz ,mode>数组到int二进制中
+	 
+	 * MeasureSpec的作用就是通过二进制的方法，用一个int类型变量保存两个数据（size,mode）
      */
     public static class MeasureSpec {
-        private static final int MODE_SHIFT = 30;
-        private static final int MODE_MASK  = 0x3 << MODE_SHIFT;
+        private static final int MODE_SHIFT = 30;//30位
+        private static final int MODE_MASK  = 0x3 << MODE_SHIFT;//3的二进制11，左移30位。11后接30个0 刚好32位。
 
         /**
          * Measure specification mode: The parent has not imposed any constraint
